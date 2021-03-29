@@ -10,6 +10,9 @@
 
 # production
 /build
+firebase-debug.log
+.firebaserc
+database-debug.log
 
 # misc
 .DS_Store

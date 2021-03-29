@@ -6,15 +6,20 @@ import {
     createMuiTheme,
     Grid,
     Paper,
+    Snackbar,
     TextField,
     ThemeProvider,
     Toolbar,
     Typography
 } from "@material-ui/core";
+import MuiAlert from '@material-ui/lab/Alert';
 import axios from 'axios';
 import firebase from "firebase";
 import {Command} from "./Command";
-import {useEffect, useState} from "react";
+import {Component, useEffect, useState} from "react";
+import {PlusOne} from "@material-ui/icons";
+
+
 
 function App() {
     const firebaseApp = firebase.apps[0];
@@ -28,10 +33,22 @@ function App() {
             }
         }
     });
+
+    //state hook declaration
     const [commandList, setCommandList] = useState([]);
     const [startMsg, setStartMsg] = useState("");
     const [cancel, setCancel] = useState(0);
+    const [snackMsg, setSnackMsg] = useState("");
+    const [openSnack, setOpenSnack] = useState(false);
+    const [snackSev, setSnackSev] = useState("info");
+    //effect hook
+    useEffect(() => {
+        //get command lists
+        fetchCommandList();
+        fetchStartMsg();
+    }, []);
 
+    //Fetch all command list
     let fetchCommandList = async () => {
         let res = await axios({
             method: 'get',
@@ -42,6 +59,7 @@ function App() {
         setCommandList(res.data.commands);
     }
 
+    //Fetch starting message
     let fetchStartMsg = async () => {
 
         let res = await axios({
@@ -53,12 +71,7 @@ function App() {
             setStartMsg(res.data.message);
     }
 
-    useEffect(() => {
-        //get command lists
-        fetchCommandList();
-        fetchStartMsg();
-    }, []);
-
+    //Handle delete button
     let handleDelete = (data) => {
         let newCommandList = [...commandList];
         console.log(data);
@@ -70,21 +83,25 @@ function App() {
             }
         }
         setCommandList(newCommandList);
-
+        setSnackSev("error");
+        setSnackMsg("Command "+data+" Deleted");
+        handleOpenSnack();
     }
 
+    //Handle add button
     let handleAdd = () => {
         let newCommandList = [...commandList];
         newCommandList.push({
-            message: " ",
-            type: " ",
-            command: " ",
+            message: "",
+            type: "",
+            command: "",
             id: Math.floor(Math.random() * (50 - 1)) + 1
         });
 
         setCommandList(newCommandList);
     }
 
+    //Handle Save Button
     let handleSave = async () => {
         let res = await axios({
             method: 'post',
@@ -102,8 +119,12 @@ function App() {
         });
         fetchStartMsg();
         fetchCommandList();
+        setSnackMsg("Data Saved");
+        setSnackSev("success");
+        handleOpenSnack();
     }
 
+    //Handle command input
     let handleChangeCommand = (cmd, oldCmd) => {
         let newCommandList = [...commandList];
 
@@ -121,8 +142,8 @@ function App() {
         setStartMsg(msg);
     }
 
+    //handle message input
     let handleChangeMessage = (msg, oldMsg) => {
-
 
         let newCommandList = [...commandList];
 
@@ -135,6 +156,23 @@ function App() {
         setCommandList(newCommandList);
         console.log(commandList);
     }
+
+    //handle snackbar open
+    let handleOpenSnack = () => {
+        setOpenSnack(true);
+    }
+
+    //handle close snackbar
+    let handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+
+        setOpenSnack(false);
+    }
+    function Alert(props) {
+        return <MuiAlert elevation={6} variant="filled" {...props} />;
+    }
     return (
         <div className="App">
             <ThemeProvider theme={theme}>
@@ -146,6 +184,12 @@ function App() {
                         </Typography>
                     </Toolbar>
                 </AppBar>
+                {/*Snackbar*/}
+                <Snackbar open={openSnack}  autoHideDuration={2000} onClose={handleCloseSnackbar}>
+                    <Alert onClose={handleCloseSnackbar} severity={snackSev}>
+                        {snackMsg}
+                    </Alert>
+                </Snackbar>
 
                 {/*Main Content*/}
                 <Grid container spacing={0} justify={"center"} className="editorContainer"
@@ -153,10 +197,11 @@ function App() {
                     <Grid container item xs={10} spacing={0}
                           style={{marginTop: "40px", marginLeft: "-40px", marginBottom: "40px"}}>
                         {/*  Builder UI  */}
-
                         <Paper elevation={2} style={{minWidth: "100%", minHeight: "80vh", padding: "20px"}}>
                             <form className="editorForm" noValidate autoComplete="off">
-
+                                <Typography variant="h6" align="center">
+                                    Starting Message:
+                                </Typography>
                                 <TextField id="startingText" fullWidth multiline rows={4} variant="outlined"
                                            defaultValue={startMsg} placeholder={"Enter the starting message"}
                                            key={cancel}
@@ -170,7 +215,7 @@ function App() {
                                 Command List:
                             </Typography>
                             <Grid container item xs={12} justify={'center'}>
-
+                                {/*Loop thru API data and create command component*/}
                                 {commandList.length > 0 ? commandList.map((item, i) => {
                                     console.log(item);
                                     return (<Command key={item.id}
@@ -183,7 +228,7 @@ function App() {
 
                             <Grid container item xs={12} alignContent={"center"} justify={"center"}>
                                 <Button onClick={handleAdd}>
-                                    Add Command
+                                     + Add Command
                                 </Button>
                             </Grid>
                             <Grid container item xs={12} alignContent={"center"} justify={"center"}>
@@ -194,6 +239,9 @@ function App() {
                                     <Button onClick={() => {
                                         fetchStartMsg().then(()=>setCancel(!cancel));
                                         fetchCommandList();
+                                        setSnackSev("warning");
+                                        setSnackMsg("Undo Edit");
+                                        handleOpenSnack();
                                     }}>
                                         Cancel
                                     </Button>
@@ -203,12 +251,7 @@ function App() {
 
                         </Paper>
                     </Grid>
-                    {/*<Grid container item md={4} xs={8} spacing={0}>*/}
-                    {/*    /!*  Output Preview  *!/*/}
-                    {/*    <Paper elevation={2} style={{minWidth: "100%", minHeight: "80vh", padding: "20px"}}>*/}
 
-                    {/*    </Paper>*/}
-                    {/*</Grid>*/}
                 </Grid>
 
             </ThemeProvider>
